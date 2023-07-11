@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -92,8 +93,35 @@ func postEmployee(ctx *fiber.Ctx) error {
 }
 
 func putEmployee(ctx *fiber.Ctx) error {
-	//TODO: implement function
-	return nil
+	idParam := ctx.Params("_id")
+	id, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).SendString(err.Error())
+	}
+
+	var employee Employee
+	if err := ctx.BodyParser(&employee); err != nil {
+		return ctx.Status(http.StatusBadRequest).SendString(err.Error())
+	}
+
+	filterEmployeeByIdQuery := bson.D{{Key: "_id", Value: id}}
+	updateEmployeeQuery := bson.D{{
+		Key: "$set", Value: bson.D{
+			{Key: "name", Value: employee.Name},
+			{Key: "salary", Value: employee.Salary},
+			{Key: "age", Value: employee.Age},
+		},
+	}}
+
+	if err := mg.Db.Collection(employeesNameInMongoDB).FindOneAndUpdate(ctx.Context(), filterEmployeeByIdQuery, updateEmployeeQuery).Err(); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return ctx.Status(http.StatusBadRequest).SendString(err.Error())
+		}
+		return ctx.Status(http.StatusInternalServerError).SendString(err.Error())
+	}
+
+	employee.Id = idParam
+	return ctx.Status(http.StatusOK).JSON(employee)
 }
 
 func deleteEmployee(ctx *fiber.Ctx) error {
