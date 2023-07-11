@@ -125,8 +125,23 @@ func putEmployee(ctx *fiber.Ctx) error {
 }
 
 func deleteEmployee(ctx *fiber.Ctx) error {
-	//TODO: implement function
-	return nil
+	idParam := ctx.Params("_id")
+	id, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).SendString(err.Error())
+	}
+
+	filterEmployeeByIdQuery := bson.D{{Key: "_id", Value: id}}
+	result, err := mg.Db.Collection(employeesNameInMongoDB).DeleteOne(ctx.Context(), &filterEmployeeByIdQuery)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).SendString(err.Error())
+	}
+
+	if result.DeletedCount == 0 {
+		return ctx.SendStatus(http.StatusNotFound)
+	}
+
+	return ctx.Status(http.StatusOK).JSON("Employee with id=" + idParam + " successfully deleted")
 }
 
 func main() {
