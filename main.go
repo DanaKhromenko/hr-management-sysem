@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -53,8 +55,18 @@ func Connect() error {
 }
 
 func getEmployee(ctx *fiber.Ctx) error {
-	//TODO: implement function
-	return nil
+	query := bson.D{{}}
+	cursor, err := mg.Db.Collection(employeesNameInMongoDB).Find(ctx.Context(), query)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).SendString(err.Error())
+	}
+
+	var employees []Employee = make([]Employee, 0)
+	if err = cursor.All(ctx.Context(), &employees); err != nil {
+		return ctx.Status(http.StatusInternalServerError).SendString(err.Error())
+	}
+
+	return ctx.JSON(employees)
 }
 
 func postEmployee(ctx *fiber.Ctx) error {
