@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -29,7 +32,23 @@ type Employee struct {
 var mg MongoInstance
 
 func Connect() error {
-	//TODO: implement function
+	client, err := mongo.NewClient(options.Client().ApplyURI(mongoUri))
+	if err != nil {
+		return err
+	}
+
+	// To avoid blocking the entire program because of the MongoDB blocking functions (like Insert)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancelFunc()
+
+	if err := client.Connect(ctx); err != nil {
+		return err
+	}
+
+	mg = MongoInstance{
+		Client: client,
+		Db:     client.Database(dbName),
+	}
 	return nil
 }
 
