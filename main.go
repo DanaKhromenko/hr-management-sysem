@@ -70,8 +70,25 @@ func getEmployee(ctx *fiber.Ctx) error {
 }
 
 func postEmployee(ctx *fiber.Ctx) error {
-	//TODO: implement function
-	return nil
+	collection := mg.Db.Collection(employeesNameInMongoDB)
+
+	var employee Employee
+	if err := ctx.BodyParser(employee); err != nil {
+		return ctx.Status(http.StatusBadRequest).SendString(err.Error())
+	}
+
+	employee.Id = ""
+	insertionResult, err := collection.InsertOne(ctx.Context(), employee)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).SendString(err.Error())
+	}
+
+	filter := bson.D{{Key: "_id", Value: insertionResult.InsertedID}}
+	createdRecord := collection.FindOne(ctx.Context(), filter)
+
+	createdEmployee := &Employee{}
+	createdRecord.Decode(createdEmployee)
+	return ctx.Status(http.StatusOK).JSON(createdEmployee)
 }
 
 func putEmployee(ctx *fiber.Ctx) error {
